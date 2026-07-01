@@ -1,0 +1,51 @@
+name: Aggressive Locust Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      peak_users:
+        description: 'Peak Users (max recommended 20000 on GitHub)'
+        required: false
+        default: '10000'
+      run_time:
+        description: 'Run Time (minutes)'
+        default: '30'
+      spawn_rate:
+        description: 'Spawn Rate'
+        default: '800'
+
+jobs:
+  loadtest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Aggressive Load Test
+        env:
+          TARGET_URL: ${{ secrets.TARGET_URL }}
+        run: |
+          locust -f locustfile.py \
+            --host=${TARGET_URL} \
+            --users ${{ github.event.inputs.peak_users }} \
+            --spawn-rate ${{ github.event.inputs.spawn_rate }} \
+            --run-time ${{ github.event.inputs.run_time }}m \
+            --headless \
+            --csv=results \
+            --html=report.html
+
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: locust-report
+          path: report.html
